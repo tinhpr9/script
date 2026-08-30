@@ -1,4 +1,16 @@
-setfpscap(10)
+-- Chờ game Roblox và nhân vật nạp hoàn tất 100% trước khi kích hoạt
+if not game:IsLoaded() then
+    game.Loaded:Wait()
+end
+repeat task.wait(0.5) until game.Players.LocalPlayer
+repeat task.wait(0.5) until game.Players.LocalPlayer.Character or game.Players.LocalPlayer.CharacterAdded:Wait()
+task.wait(3) -- Delay an toàn để tránh lỗi ContentCatalog / GetChildren
+
+-- FPS Cap tối thiểu 10 (Theo khuyến nghị của tác giả script)
+if setfpscap then
+    setfpscap(15)
+end
+
 getgenv().StealAnEgg = {
     MaxPlotLevel = 5,
     MaxTreadmillLevel = 10,
@@ -25,4 +37,12 @@ getgenv().StealAnEgg = {
     PrivateHatchWebhookRarities = { "Legendary", "Mythic", "Secret", "Eternal", "Divine" },
     ShowPingInGlobalWebhook = false,
 }
-loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/f7fb20d3bbdf4ef86ef18caebae5b838.lua"))()
+
+task.spawn(function()
+    local success, err = pcall(function()
+        loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/f7fb20d3bbdf4ef86ef18caebae5b838.lua"))()
+    end)
+    if not success then
+        warn("[SAE Loader Error]:", err)
+    end
+end)

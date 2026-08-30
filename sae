@@ -1,0 +1,28 @@
+setfpscap(10)
+getgenv().StealAnEgg = {
+    MaxPlotLevel = 5,
+    MaxTreadmillLevel = 10,
+
+    SellPets = {
+        { Name = "Centapede", Mutation = "None", MaxKG = 3 },
+    },
+
+    PlaceEggs = {
+        { Name = "Cosmic Egg", Rarity = "Legendary" },
+        { Name = "Cherry Blossom Egg", Rarity = "Cosmic" },
+        { Name = "Cherry Blossom Egg", Rarity = "Legendary" },
+    },
+    PlaceEggSpacing = 4,
+    PlaceEggMaxTriesPerEgg = 12,
+
+    StealEggs = {
+        { Name = "Cherry Blossom Egg", MinKG = 0, Rarity = "All" },
+        { Name = "Cosmic Egg", MinKG = 0, Rarity = "Secret" },
+    },
+
+    DiscordId = "123456789012345678",
+    PrivateHatchWebhookUrl = "",
+    PrivateHatchWebhookRarities = { "Legendary", "Mythic", "Secret", "Eternal", "Divine" },
+    ShowPingInGlobalWebhook = false,
+}
+loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/f7fb20d3bbdf4ef86ef18caebae5b838.lua"))()

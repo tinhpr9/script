@@ -1,5 +1,5 @@
 -- ====================================================================
--- 🥚 STEAL AN EGG! (SAE) - ADVANCED AUTO FARM & LOADER BY TINHPR9
+-- 🥚 STEAL AN EGG! (SAE) - CLEAN & SAFE LOADER (NO METATABLE HOOK)
 -- ====================================================================
 
 -- 1. Chờ Game và Nhân vật nạp hoàn tất 100%
@@ -9,25 +9,16 @@ end
 repeat task.wait(0.5) until game.Players.LocalPlayer
 local LocalPlayer = game.Players.LocalPlayer
 repeat task.wait(0.5) until LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-task.wait(2)
+task.wait(3)
 
--- 2. Thiết lập FPS & Tối ưu luồng mạng
-if setfpscap then
-    setfpscap(15) -- Giữ mức 15 FPS an toàn theo chuẩn tác giả (>= 10 FPS)
-end
+-- 2. Thiết lập FPS an toàn (>= 10 FPS theo khuyến nghị tác giả)
+pcall(function()
+    if setfpscap then
+        setfpscap(15)
+    end
+end)
 
--- 3. Bẻ khóa giả lập PlaceId (Bypass lỗi 'Other Game')
-if hookmetamethod and checkcaller then
-    local oldIndex
-    oldIndex = hookmetamethod(game, "__index", function(self, key)
-        if not checkcaller() and self == game and key == "PlaceId" then
-            return 16867381283 -- Force Steal An Egg Main Place ID
-        end
-        return oldIndex(self, key)
-    end)
-end
-
--- 4. Bảng Cấu hình người dùng (StealAnEgg Config)
+-- 3. Bảng Cấu hình người dùng (StealAnEgg Config)
 getgenv().StealAnEgg = {
     MaxPlotLevel = 5,
     MaxTreadmillLevel = 10,
@@ -55,33 +46,21 @@ getgenv().StealAnEgg = {
     ShowPingInGlobalWebhook = false,
 }
 
--- 5. Thông báo hiển thị trạng thái trên màn hình game (StarterGui Notify)
+-- 4. Thông báo nổi trên màn hình game
 pcall(function()
     game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "🥚 Steal An Egg Auto",
-        Text = "Đang kích hoạt Auto Farm & Nạp Loader...",
-        Duration = 5,
+        Title = "🥚 Steal An Egg",
+        Text = "Đang nạp script an toàn (Clean Mode)...",
+        Duration = 4,
     })
 end)
 
--- 6. Khởi chạy luồng chính an toàn (Protected Execution)
+-- 5. Khởi chạy Luarmor Loader an toàn trong luồng riêng biệt
 task.spawn(function()
     local success, err = pcall(function()
         loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/f7fb20d3bbdf4ef86ef18caebae5b838.lua"))()
     end)
-    
     if not success then
-        warn("[SAE Luarmor Error]:", err)
-        print("[!] Luarmor nạp không thành công, vui lòng kiểm tra kết nối mạng!")
+        warn("[SAE Error]:", err)
     end
-end)
-
--- 7. Luồng hỗ trợ giữ kết nối & chống AFK văng game (Anti-AFK Engine)
-task.spawn(function()
-    local VirtualUser = game:GetService("VirtualUser")
-    LocalPlayer.Idled:Connect(function()
-        VirtualUser:CaptureController()
-        VirtualUser:ClickButton2(Vector2.new(0, 0))
-        print("[Anti-AFK] Đã gửi tín hiệu chống văng game!")
-    end)
 end)

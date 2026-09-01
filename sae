@@ -1,55 +1,44 @@
 -- ====================================================================
--- 🥚 STEAL AN EGG! (SAE) - PURE NATIVE LUA AUTO STEAL ENGINE
--- 👤 Tác giả: Tinhpr9 & Antigravity Core
--- 🚫 KHÔNG DÙNG LUARMOR - KHÔNG CẦN KEY - KHÔNG BỊ BAC KICK
+-- 🥚 STEAL AN EGG! (SAE) - FULL AUTO FARM LOOP (PURE LUA)
+-- 🚫 KHÔNG DÙNG LUARMOR - HOÀN TOÀN TỰ ĐỘNG THEO VIDEO
 -- ====================================================================
 
--- 1. Chờ Game nạp hoàn tất
-if not game:IsLoaded() then
-    game.Loaded:Wait()
-end
+if not game:IsLoaded() then game.Loaded:Wait() end
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
-local RunService = game:GetService("RunService")
 local VirtualUser = game:GetService("VirtualUser")
-local TweenService = game:GetService("TweenService")
 local StarterGui = game:GetService("StarterGui")
 
 local LocalPlayer = Players.LocalPlayer
 repeat task.wait(0.5) until LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 
--- 2. Biến điều khiển trạng thái (State Flags)
-_G.AutoStealEggs = true
-_G.StealSpeed = 0.3 -- Thời gian chờ giữa mỗi lần nhặt trứng (giây)
-_G.TeleportMode = true -- true: Bay thẳng đến trứng, false: Đi bộ
+-- Các biến toàn cục
+_G.AutoFarm = true
+_G.FarmSpeed = 0.5 -- Tốc độ nghỉ giữa các hành động
 
--- 3. Thông báo nạp thành công
+-- Tạo thông báo
 pcall(function()
     StarterGui:SetCore("SendNotification", {
-        Title = "🥚 SAE Auto Steal v1.0",
-        Text = "Đã nạp Script Pure Lua! Đang tìm trứng...",
+        Title = "🥚 SAE Auto Farm",
+        Text = "Đã nạp Script! Tự động Steal ➔ Place ➔ Hatch...",
         Duration = 4,
     })
 end)
 
--- 4. Hàm lấy nhân vật và RootPart an toàn
 local function getRootPart()
     local char = LocalPlayer.Character
-    if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid") and char.Humanoid.Health > 0 then
-        return char.HumanoidRootPart, char.Humanoid
+    if char and char:FindFirstChild("HumanoidRootPart") then
+        return char.HumanoidRootPart
     end
-    return nil, nil
+    return nil
 end
 
--- 5. Hàm kích hoạt nút ProximityPrompt (Nút Steal)
 local function triggerPrompt(prompt)
     if not prompt or not prompt.Parent then return end
-    
     if fireproximityprompt then
         fireproximityprompt(prompt, 0, true)
     else
-        -- Fallback nếu executor không có fireproximityprompt
         prompt.HoldDuration = 0
         prompt:InputHoldBegin()
         task.wait(0.1)
@@ -57,113 +46,90 @@ local function triggerPrompt(prompt)
     end
 end
 
--- 6. Hàm quét toàn bộ trứng có nút Steal trên bản đồ
-local function findStealEggPrompts()
-    local eggPrompts = {}
-    for _, obj in pairs(Workspace:GetDescendants()) do
-        if obj:IsA("ProximityPrompt") then
-            local action = obj.ActionText:lower()
-            local object = obj.ObjectText:lower()
-            local parentName = obj.Parent and obj.Parent.Name:lower() or ""
-            
-            -- Nhận diện các nút "Steal" hoặc "Egg"
-            if action:find("steal") or object:find("egg") or parentName:find("egg") then
-                table.insert(eggPrompts, obj)
-            end
-        end
-    end
-    return eggPrompts
-end
-
--- 7. VÒNG LẶP AUTO STEAL CHÍNH (MAIN AUTO STEAL LOOP)
+-- VÒNG LẶP AUTO FARM TOÀN DIỆN
 task.spawn(function()
-    print("[🥚 SAE] Khởi động vòng lặp Auto Steal Egg...")
+    print("[🥚] Khởi động vòng lặp Auto Farm (Steal -> Place -> Hatch)...")
     
     while true do
-        task.wait(0.1)
+        task.wait(_G.FarmSpeed)
         
-        if _G.AutoStealEggs then
-            local root, humanoid = getRootPart()
-            if root and humanoid then
-                local prompts = findStealEggPrompts()
+        if _G.AutoFarm then
+            local root = getRootPart()
+            if root then
+                -- 1. Tìm tất cả các Prompt trên màn hình
+                local allPrompts = {}
+                for _, obj in pairs(Workspace:GetDescendants()) do
+                    if obj:IsA("ProximityPrompt") and obj.Enabled then
+                        table.insert(allPrompts, obj)
+                    end
+                end
                 
-                for _, prompt in ipairs(prompts) do
-                    if not _G.AutoStealEggs then break end
-                    
-                    -- Kiểm tra xem quả trứng còn tồn tại không
-                    if prompt and prompt.Parent and prompt.Enabled then
-                        local targetPart = nil
-                        if prompt.Parent:IsA("BasePart") then
-                            targetPart = prompt.Parent
-                        else
-                            targetPart = prompt.Parent:FindFirstChildWhichIsA("BasePart")
-                        end
-                        
+                local acted = false
+                
+                -- Ưu tiên 1: HATCH (Ấp trứng) hoặc PLACE (Đặt trứng) tại Base của mình
+                for _, prompt in ipairs(allPrompts) do
+                    local action = prompt.ActionText:lower()
+                    if action:find("hatch") or action:find("place") then
+                        local targetPart = prompt.Parent:IsA("BasePart") and prompt.Parent or prompt.Parent:FindFirstChildWhichIsA("BasePart")
                         if targetPart then
-                            -- Dịch chuyển nhân vật đến sát quả trứng
                             root.CFrame = targetPart.CFrame * CFrame.new(0, 1.5, 0)
-                            task.wait(0.1)
-                            
-                            -- Kích hoạt nhặt trứng
+                            task.wait(0.2)
                             triggerPrompt(prompt)
-                            print("[🥚] Đã nhặt trứng tại:", targetPart.Position)
-                            
-                            task.wait(_G.StealSpeed)
+                            print("[✨] Đã thực hiện:", action)
+                            acted = true
+                            break
                         end
                     end
                 end
+                
+                -- Ưu tiên 2: STEAL (Đi ăn trộm trứng) nếu chưa có trứng trên tay
+                if not acted then
+                    for _, prompt in ipairs(allPrompts) do
+                        local action = prompt.ActionText:lower()
+                        if action:find("steal") then
+                            local targetPart = prompt.Parent:IsA("BasePart") and prompt.Parent or prompt.Parent:FindFirstChildWhichIsA("BasePart")
+                            if targetPart then
+                                root.CFrame = targetPart.CFrame * CFrame.new(0, 1.5, 0)
+                                task.wait(0.2)
+                                triggerPrompt(prompt)
+                                print("[🥚] Đã nhặt trứng (Steal)!")
+                                break
+                            end
+                        end
+                    end
+                end
+                
             end
         end
     end
 end)
 
--- 8. Tự động chống văng phòng (Anti-AFK 24/7)
+-- Chống AFK
 task.spawn(function()
     LocalPlayer.Idled:Connect(function()
         VirtualUser:CaptureController()
         VirtualUser:ClickButton2(Vector2.new(0, 0))
-        print("[🛡️ Anti-AFK] Giữ kết nối game thành công!")
     end)
 end)
 
--- 9. TẠO MENU NÚT BẤM BẬT/TẮT NỔI TRÊN MÀN HÌNH (SIMPLE TOGGLE GUI)
+-- GUI Đơn giản
 pcall(function()
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "SAE_AutoSteal_GUI"
-    screenGui.ResetOnSpawn = false
+    local sg = Instance.new("ScreenGui", game:GetService("CoreGui"))
+    local btn = Instance.new("TextButton", sg)
+    btn.Size = UDim2.new(0, 140, 0, 45)
+    btn.Position = UDim2.new(0, 20, 0.5, 0)
+    btn.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
+    btn.Text = "🥚 AUTO: BẬT"
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 14
     
-    -- Gắn vào CoreGui hoặc PlayerGui
-    local parentGui = game:GetService("CoreGui")
-    pcall(function() screenGui.Parent = parentGui end)
-    if not screenGui.Parent then
-        screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
-    end
-    
-    local toggleBtn = Instance.new("TextButton")
-    toggleBtn.Name = "ToggleStealBtn"
-    toggleBtn.Size = UDim2.new(0, 130, 0, 45)
-    toggleBtn.Position = UDim2.new(0, 20, 0.5, -22)
-    toggleBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
-    toggleBtn.Text = "🥚 STEAL: BẬT"
-    toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    toggleBtn.TextSize = 14
-    toggleBtn.Font = Enum.Font.GothamBold
-    toggleBtn.Parent = screenGui
-    
-    local corner = Instance.new("UICorner")
+    local corner = Instance.new("UICorner", btn)
     corner.CornerRadius = UDim.new(0, 10)
-    corner.Parent = toggleBtn
     
-    toggleBtn.MouseButton1Click:Connect(function()
-        _G.AutoStealEggs = not _G.AutoStealEggs
-        if _G.AutoStealEggs then
-            toggleBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
-            toggleBtn.Text = "🥚 STEAL: BẬT"
-        else
-            toggleBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-            toggleBtn.Text = "🥚 STEAL: TẮT"
-        end
+    btn.MouseButton1Click:Connect(function()
+        _G.AutoFarm = not _G.AutoFarm
+        btn.Text = _G.AutoFarm and "🥚 AUTO: BẬT" or "🥚 AUTO: TẮT"
+        btn.BackgroundColor3 = _G.AutoFarm and Color3.fromRGB(0, 180, 80) or Color3.fromRGB(200, 50, 50)
     end)
 end)
-
-print("[✅] SCRIPT AUTO STEAL EGG PURE LUA ĐÃ SẴN SÀNG!")

@@ -1,5 +1,5 @@
 -- ====================================================================
--- 🥚 STEAL AN EGG! (SAE) - FULL AUTO FARM LOOP (PURE LUA)
+-- 🥚 STEAL AN EGG! (SAE) - BAC-10511 BYPASS AUTO FARM (SAFE TWEEN)
 -- 🚫 KHÔNG DÙNG LUARMOR - HOÀN TOÀN TỰ ĐỘNG THEO VIDEO
 -- ====================================================================
 
@@ -8,6 +8,7 @@ if not game:IsLoaded() then game.Loaded:Wait() end
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local VirtualUser = game:GetService("VirtualUser")
+local TweenService = game:GetService("TweenService")
 local StarterGui = game:GetService("StarterGui")
 
 local LocalPlayer = Players.LocalPlayer
@@ -15,13 +16,13 @@ repeat task.wait(0.5) until LocalPlayer.Character or LocalPlayer.CharacterAdded:
 
 -- Các biến toàn cục
 _G.AutoFarm = true
-_G.FarmSpeed = 0.5 -- Tốc độ nghỉ giữa các hành động
+_G.TweenSpeed = 50 -- Tốc độ bay (studs/giây). Không quá nhanh để tránh Anti-Cheat BAC-10511
 
 -- Tạo thông báo
 pcall(function()
     StarterGui:SetCore("SendNotification", {
-        Title = "🥚 SAE Auto Farm",
-        Text = "Đã nạp Script! Tự động Steal ➔ Place ➔ Hatch...",
+        Title = "🥚 SAE Auto Farm v2",
+        Text = "Đã nạp Script Bypass BAC-10511 (Safe Tween Mode)!",
         Duration = 4,
     })
 end)
@@ -32,6 +33,35 @@ local function getRootPart()
         return char.HumanoidRootPart
     end
     return nil
+end
+
+-- Hàm bay an toàn (Tween) để không bị Anti-Cheat quét dịch chuyển tức thời
+local function tweenTo(targetCFrame)
+    local root = getRootPart()
+    if not root then return false end
+    
+    local distance = (root.Position - targetCFrame.Position).Magnitude
+    local timeToTween = distance / _G.TweenSpeed
+    
+    if timeToTween == 0 then return true end
+    
+    local tweenInfo = TweenInfo.new(timeToTween, Enum.EasingStyle.Linear)
+    local tween = TweenService:Create(root, tweenInfo, {CFrame = targetCFrame})
+    
+    -- Tạm thời tắt va chạm (Noclip) khi bay để không bị kẹt
+    local noclipConnection = game:GetService("RunService").Stepped:Connect(function()
+        for _, v in pairs(LocalPlayer.Character:GetDescendants()) do
+            if v:IsA("BasePart") and v.CanCollide then
+                v.CanCollide = false
+            end
+        end
+    end)
+    
+    tween:Play()
+    tween.Completed:Wait()
+    
+    noclipConnection:Disconnect()
+    return true
 end
 
 local function triggerPrompt(prompt)
@@ -48,15 +78,14 @@ end
 
 -- VÒNG LẶP AUTO FARM TOÀN DIỆN
 task.spawn(function()
-    print("[🥚] Khởi động vòng lặp Auto Farm (Steal -> Place -> Hatch)...")
+    print("[🥚] Khởi động vòng lặp Auto Farm (Safe Tween)...")
     
     while true do
-        task.wait(_G.FarmSpeed)
+        task.wait(0.2)
         
         if _G.AutoFarm then
             local root = getRootPart()
             if root then
-                -- 1. Tìm tất cả các Prompt trên màn hình
                 local allPrompts = {}
                 for _, obj in pairs(Workspace:GetDescendants()) do
                     if obj:IsA("ProximityPrompt") and obj.Enabled then
@@ -72,7 +101,8 @@ task.spawn(function()
                     if action:find("hatch") or action:find("place") then
                         local targetPart = prompt.Parent:IsA("BasePart") and prompt.Parent or prompt.Parent:FindFirstChildWhichIsA("BasePart")
                         if targetPart then
-                            root.CFrame = targetPart.CFrame * CFrame.new(0, 1.5, 0)
+                            -- Bay đến mục tiêu an toàn
+                            tweenTo(targetPart.CFrame * CFrame.new(0, 1.5, 0))
                             task.wait(0.2)
                             triggerPrompt(prompt)
                             print("[✨] Đã thực hiện:", action)
@@ -89,7 +119,8 @@ task.spawn(function()
                         if action:find("steal") then
                             local targetPart = prompt.Parent:IsA("BasePart") and prompt.Parent or prompt.Parent:FindFirstChildWhichIsA("BasePart")
                             if targetPart then
-                                root.CFrame = targetPart.CFrame * CFrame.new(0, 1.5, 0)
+                                -- Bay đến mục tiêu an toàn
+                                tweenTo(targetPart.CFrame * CFrame.new(0, 1.5, 0))
                                 task.wait(0.2)
                                 triggerPrompt(prompt)
                                 print("[🥚] Đã nhặt trứng (Steal)!")
@@ -114,7 +145,15 @@ end)
 
 -- GUI Đơn giản
 pcall(function()
-    local sg = Instance.new("ScreenGui", game:GetService("CoreGui"))
+    local sg = Instance.new("ScreenGui")
+    sg.Name = "SAE_AutoFarm_Bypass"
+    
+    local parentGui = game:GetService("CoreGui")
+    pcall(function() sg.Parent = parentGui end)
+    if not sg.Parent then
+        sg.Parent = LocalPlayer:WaitForChild("PlayerGui")
+    end
+    
     local btn = Instance.new("TextButton", sg)
     btn.Size = UDim2.new(0, 140, 0, 45)
     btn.Position = UDim2.new(0, 20, 0.5, 0)

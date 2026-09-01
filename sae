@@ -1,179 +1,70 @@
--- ====================================================================
--- 🥚 STEAL AN EGG! (SAE) - BAC-4519 BYPASS (100% LEGIT INTERACTION)
--- 🚫 KHÔNG FIREPROXIMITYPROMPT BYPASS - MÔ PHỎNG NGƯỜI CHƠI BẤM NÚT
--- ====================================================================
+G.SAE_CONFIG = {
 
-if not game:IsLoaded() then game.Loaded:Wait() end
+    script_key = "5fd2965a-0797-41cc-9b4b-88a7068b4cfa",
 
-local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
-local VirtualUser = game:GetService("VirtualUser")
-local StarterGui = game:GetService("StarterGui")
+    -- What it does
+    AutoSteal        = true,
+    AutoHatch        = true,
+    AutoEquipBest    = true,   -- swaps weaker pets out of the pen for better ones
+    AutoTreadmill    = true,
+    AutoIndex        = true,   -- Index rewards and offline money
+    AutoPenUpgrade   = true,   -- base upgrades, each adds pen slots
+    AutoUpgradeSpeed = true,   -- treadmill tiers
+    AutoTrail        = true,
 
-local LocalPlayer = Players.LocalPlayer
-repeat task.wait(0.5) until LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    -- Treadmill timing, in seconds
+    FallbackTreadmill  = 120,  -- when nothing is worth stealing
+    MissRest           = 15,   -- after losing an egg while others remain
+    BreakDuration      = 60,
+    StealsBeforeBreak  = 10,
+    MaxTreadmillStreak = 240,  -- force a steal attempt after this long on speed
 
--- Các biến toàn cục
-_G.AutoFarm = true
+    -- Your speed must beat an area's guard by this multiple, or the guard takes
+    -- the egg on the way home. 1.05 opens Prehistoric. Higher is safer but locks
+    -- out the rich zones. Uses measured speed, not the stat sheet.
+    WalkSpeedMargin = 1.05,
 
--- Tạo thông báo
-pcall(function()
-    StarterGui:SetCore("SendNotification", {
-        Title = "🥚 SAE 100% Legit Mode",
-        Text = "Đã nạp Script Bypass BAC-4519 (Mô phỏng bấm nút thật)!",
-        Duration = 4,
-    })
-end)
+    -- Rare = this rarity or above. Read off the egg before walking to it, so a
+    -- rare is spotted the moment it spawns rather than on pickup. A rare makes
+    -- the bot drop everything, ignores the pen-value filter, and sends Discord.
+    --   1 Common  2 Uncommon  3 Rare    4 Epic     5 Legendary
+    --   6 Mythic  7 Cosmic    8 Secret  9 Eternal  10 Divine
+    RareMinRarity   = 8,       -- Secret and above
+    RareAlertWindow = 180,     -- keep chasing a spotted rare this long
 
-local function getCharacter()
-    local char = LocalPlayer.Character
-    if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid") then
-        return char, char.HumanoidRootPart, char.Humanoid
-    end
-    return nil, nil, nil
-end
+    -- Discord message on a rare collection. Empty = disabled.
+    -- Anyone holding this URL can post to that channel, so treat it as a password.
+    HatchWebhookUrl = "",
+    DiscordPingId   = "",      -- your numeric Discord id to get pinged, or ""
 
--- Hàm đi bộ hoàn toàn hợp lệ (Legit Walk) để tránh mọi Anti-Cheat (BAC-10511, BAC-8513)
-local function walkTo(targetPosition)
-    local char, root, humanoid = getCharacter()
-    if not humanoid or not root then return false end
-    
-    humanoid.WalkSpeed = 25 
-    humanoid:MoveTo(targetPosition)
-    
-    local timeout = 6
-    local elapsed = 0
-    while elapsed < timeout do
-        local distance = (root.Position - targetPosition).Magnitude
-        if distance <= 4 then
-            return true
-        end
-        task.wait(0.1)
-        elapsed = elapsed + 0.1
-        
-        -- Thỉnh thoảng nhảy nếu bị kẹt
-        if humanoid.MoveDirection.Magnitude > 0 and root.Velocity.Magnitude < 1 then
-            humanoid.Jump = true
-        end
-    end
-    return false
-end
+    -- Selling
+    SellUnused       = true,   -- sell pets that can never make the pen
+    SellInterval     = 60,     -- try selling this often
+    SellStartupGrace = 120,    -- never sell in the first N seconds after loading
+    TidyEveryEggs    = 10,     -- re-equip best and clear unused every N hatches
 
--- Hàm tương tác an toàn 100% (BYPASS BAC-4519)
-local function safeTriggerPrompt(prompt, root)
-    if not prompt or not prompt.Parent then return end
-    
-    -- Đảm bảo đã đứng đủ gần trước khi kích hoạt
-    local distance = (root.Position - prompt.Parent.Position).Magnitude
-    if distance > 10 then return end -- Xa quá không bấm
-    
-    -- TUYỆT ĐỐI KHÔNG DÙNG fireproximityprompt VÌ SẼ BỊ BAC-4519 PHÁT HIỆN
-    -- Mô phỏng chính xác hành động đè nút của người chơi thật
-    local holdTime = prompt.HoldDuration or 0
-    
-    prompt:InputHoldBegin()
-    if holdTime > 0 then
-        -- Chờ đúng thời gian yêu cầu của game (cộng thêm 0.1s ping mạng)
-        task.wait(holdTime + 0.1)
-    else
-        task.wait(0.1)
-    end
-    prompt:InputHoldEnd()
-end
+    -- Extra rules on top. Empty means nothing beyond the automatic clearing.
+    --   { Name = "Frog", Mutation = "None", MaxKG = 10 }
+    --   { Rarity = "Common", MaxKG = 50 }
+    SellPets = {},
 
--- VÒNG LẶP AUTO FARM LEGIT
-task.spawn(function()
-    print("[🥚] Khởi động vòng lặp Legit Interaction Auto Farm...")
-    
-    while true do
-        task.wait(0.5)
-        
-        if _G.AutoFarm then
-            local char, root, humanoid = getCharacter()
-            if root and humanoid then
-                local allPrompts = {}
-                for _, obj in pairs(Workspace:GetDescendants()) do
-                    if obj:IsA("ProximityPrompt") and obj.Enabled then
-                        table.insert(allPrompts, obj)
-                    end
-                end
-                
-                local acted = false
-                
-                -- Ưu tiên 1: HATCH (Ấp trứng) hoặc PLACE (Đặt trứng) tại Base
-                for _, prompt in ipairs(allPrompts) do
-                    local action = prompt.ActionText:lower()
-                    if action:find("hatch") or action:find("place") then
-                        local targetPart = prompt.Parent:IsA("BasePart") and prompt.Parent or prompt.Parent:FindFirstChildWhichIsA("BasePart")
-                        if targetPart then
-                            if walkTo(targetPart.Position) then
-                                task.wait(0.2)
-                                safeTriggerPrompt(prompt, root)
-                                print("[✨] Đã tương tác Legit:", action)
-                                acted = true
-                                break
-                            end
-                        end
-                    end
-                end
-                
-                -- Ưu tiên 2: STEAL (Đi ăn trộm trứng)
-                if not acted then
-                    for _, prompt in ipairs(allPrompts) do
-                        local action = prompt.ActionText:lower()
-                        if action:find("steal") then
-                            local targetPart = prompt.Parent:IsA("BasePart") and prompt.Parent or prompt.Parent:FindFirstChildWhichIsA("BasePart")
-                            if targetPart then
-                                if walkTo(targetPart.Position) then
-                                    task.wait(0.2)
-                                    safeTriggerPrompt(prompt, root)
-                                    print("[🥚] Đã trộm trứng Legit (Steal)!")
-                                    break
-                                end
-                            end
-                        end
-                    end
-                end
-                
-            end
-        end
-    end
-end)
+    -- Framerate decides real movement speed, and guards run server-side so they
+    -- do not slow down with you. Measured against a 172 cap:
+    --   30 fps = 153 studs/s (90%)
+    --   10 fps = 141 studs/s (82%)
+    --    5 fps =  62 studs/s (36%)  physics stepping falls apart
+    FpsCap = 30,
 
--- Chống AFK
-task.spawn(function()
-    LocalPlayer.Idled:Connect(function()
-        VirtualUser:CaptureController()
-        VirtualUser:ClickButton2(Vector2.new(0, 0))
-    end)
-end)
+    Optimize       = true,     -- SmoothPlastic everything, strip particles
+    StripOtherPets = true,     -- delete other players' pet models
+    KillRender     = true,     -- stop 3D rendering while the overlay is up
+    MuteGame       = true,     -- silence every Sound and VideoFrame
+    DismissPopups  = true,     -- shut gift, reward and shop popups
+    HideGameUI     = true,     -- hide the game's interface behind the overlay
 
--- GUI Đơn giản
-pcall(function()
-    local sg = Instance.new("ScreenGui")
-    sg.Name = "SAE_UltraLegit_GUI"
-    
-    local parentGui = game:GetService("CoreGui")
-    pcall(function() sg.Parent = parentGui end)
-    if not sg.Parent then
-        sg.Parent = LocalPlayer:WaitForChild("PlayerGui")
-    end
-    
-    local btn = Instance.new("TextButton", sg)
-    btn.Size = UDim2.new(0, 140, 0, 45)
-    btn.Position = UDim2.new(0, 20, 0.5, 0)
-    btn.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
-    btn.Text = "🥚 AUTO: BẬT"
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 14
-    
-    local corner = Instance.new("UICorner", btn)
-    corner.CornerRadius = UDim.new(0, 10)
-    
-    btn.MouseButton1Click:Connect(function()
-        _G.AutoFarm = not _G.AutoFarm
-        btn.Text = _G.AutoFarm and "🥚 AUTO: BẬT" or "🥚 AUTO: TẮT"
-        btn.BackgroundColor3 = _G.AutoFarm and Color3.fromRGB(0, 180, 80) or Color3.fromRGB(200, 50, 50)
-    end)
-end)
+    ToggleKey = Enum.KeyCode.K,
+}
+
+if _G.SAE_STOP then pcall(_G.SAE_STOP) end
+
+loadstring(game:HttpGet("https://api.jnkie.com/api/v1/luascripts/public/289c44d13827c23a4d329a98d690b194ed68c3b2b2c80c25a3487a116bd338a0/download"))()

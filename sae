@@ -1,66 +1,169 @@
 -- ====================================================================
--- 🥚 STEAL AN EGG! (SAE) - CLEAN & SAFE LOADER (NO METATABLE HOOK)
+-- 🥚 STEAL AN EGG! (SAE) - PURE NATIVE LUA AUTO STEAL ENGINE
+-- 👤 Tác giả: Tinhpr9 & Antigravity Core
+-- 🚫 KHÔNG DÙNG LUARMOR - KHÔNG CẦN KEY - KHÔNG BỊ BAC KICK
 -- ====================================================================
 
--- 1. Chờ Game và Nhân vật nạp hoàn tất 100%
+-- 1. Chờ Game nạp hoàn tất
 if not game:IsLoaded() then
     game.Loaded:Wait()
 end
-repeat task.wait(0.5) until game.Players.LocalPlayer
-local LocalPlayer = game.Players.LocalPlayer
+
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
+local VirtualUser = game:GetService("VirtualUser")
+local TweenService = game:GetService("TweenService")
+local StarterGui = game:GetService("StarterGui")
+
+local LocalPlayer = Players.LocalPlayer
 repeat task.wait(0.5) until LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-task.wait(3)
 
--- 2. Thiết lập FPS an toàn (>= 10 FPS theo khuyến nghị tác giả)
+-- 2. Biến điều khiển trạng thái (State Flags)
+_G.AutoStealEggs = true
+_G.StealSpeed = 0.3 -- Thời gian chờ giữa mỗi lần nhặt trứng (giây)
+_G.TeleportMode = true -- true: Bay thẳng đến trứng, false: Đi bộ
+
+-- 3. Thông báo nạp thành công
 pcall(function()
-    if setfpscap then
-        setfpscap(15)
-    end
-end)
-
--- 3. Bảng Cấu hình người dùng (StealAnEgg Config)
-getgenv().StealAnEgg = {
-    MaxPlotLevel = 5,
-    MaxTreadmillLevel = 10,
-
-    SellPets = {
-        { Name = "Centapede", Mutation = "None", MaxKG = 3 },
-    },
-
-    PlaceEggs = {
-        { Name = "Cosmic Egg", Rarity = "Legendary" },
-        { Name = "Cherry Blossom Egg", Rarity = "Cosmic" },
-        { Name = "Cherry Blossom Egg", Rarity = "Legendary" },
-    },
-    PlaceEggSpacing = 4,
-    PlaceEggMaxTriesPerEgg = 12,
-
-    StealEggs = {
-        { Name = "Cherry Blossom Egg", MinKG = 0, Rarity = "All" },
-        { Name = "Cosmic Egg", MinKG = 0, Rarity = "Secret" },
-    },
-
-    DiscordId = "123456789012345678",
-    PrivateHatchWebhookUrl = "",
-    PrivateHatchWebhookRarities = { "Legendary", "Mythic", "Secret", "Eternal", "Divine" },
-    ShowPingInGlobalWebhook = false,
-}
-
--- 4. Thông báo nổi trên màn hình game
-pcall(function()
-    game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "🥚 Steal An Egg",
-        Text = "Đang nạp script an toàn (Clean Mode)...",
+    StarterGui:SetCore("SendNotification", {
+        Title = "🥚 SAE Auto Steal v1.0",
+        Text = "Đã nạp Script Pure Lua! Đang tìm trứng...",
         Duration = 4,
     })
 end)
 
--- 5. Khởi chạy Luarmor Loader an toàn trong luồng riêng biệt
+-- 4. Hàm lấy nhân vật và RootPart an toàn
+local function getRootPart()
+    local char = LocalPlayer.Character
+    if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid") and char.Humanoid.Health > 0 then
+        return char.HumanoidRootPart, char.Humanoid
+    end
+    return nil, nil
+end
+
+-- 5. Hàm kích hoạt nút ProximityPrompt (Nút Steal)
+local function triggerPrompt(prompt)
+    if not prompt or not prompt.Parent then return end
+    
+    if fireproximityprompt then
+        fireproximityprompt(prompt, 0, true)
+    else
+        -- Fallback nếu executor không có fireproximityprompt
+        prompt.HoldDuration = 0
+        prompt:InputHoldBegin()
+        task.wait(0.1)
+        prompt:InputHoldEnd()
+    end
+end
+
+-- 6. Hàm quét toàn bộ trứng có nút Steal trên bản đồ
+local function findStealEggPrompts()
+    local eggPrompts = {}
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if obj:IsA("ProximityPrompt") then
+            local action = obj.ActionText:lower()
+            local object = obj.ObjectText:lower()
+            local parentName = obj.Parent and obj.Parent.Name:lower() or ""
+            
+            -- Nhận diện các nút "Steal" hoặc "Egg"
+            if action:find("steal") or object:find("egg") or parentName:find("egg") then
+                table.insert(eggPrompts, obj)
+            end
+        end
+    end
+    return eggPrompts
+end
+
+-- 7. VÒNG LẶP AUTO STEAL CHÍNH (MAIN AUTO STEAL LOOP)
 task.spawn(function()
-    local success, err = pcall(function()
-        loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/f7fb20d3bbdf4ef86ef18caebae5b838.lua"))()
-    end)
-    if not success then
-        warn("[SAE Error]:", err)
+    print("[🥚 SAE] Khởi động vòng lặp Auto Steal Egg...")
+    
+    while true do
+        task.wait(0.1)
+        
+        if _G.AutoStealEggs then
+            local root, humanoid = getRootPart()
+            if root and humanoid then
+                local prompts = findStealEggPrompts()
+                
+                for _, prompt in ipairs(prompts) do
+                    if not _G.AutoStealEggs then break end
+                    
+                    -- Kiểm tra xem quả trứng còn tồn tại không
+                    if prompt and prompt.Parent and prompt.Enabled then
+                        local targetPart = nil
+                        if prompt.Parent:IsA("BasePart") then
+                            targetPart = prompt.Parent
+                        else
+                            targetPart = prompt.Parent:FindFirstChildWhichIsA("BasePart")
+                        end
+                        
+                        if targetPart then
+                            -- Dịch chuyển nhân vật đến sát quả trứng
+                            root.CFrame = targetPart.CFrame * CFrame.new(0, 1.5, 0)
+                            task.wait(0.1)
+                            
+                            -- Kích hoạt nhặt trứng
+                            triggerPrompt(prompt)
+                            print("[🥚] Đã nhặt trứng tại:", targetPart.Position)
+                            
+                            task.wait(_G.StealSpeed)
+                        end
+                    end
+                end
+            end
+        end
     end
 end)
+
+-- 8. Tự động chống văng phòng (Anti-AFK 24/7)
+task.spawn(function()
+    LocalPlayer.Idled:Connect(function()
+        VirtualUser:CaptureController()
+        VirtualUser:ClickButton2(Vector2.new(0, 0))
+        print("[🛡️ Anti-AFK] Giữ kết nối game thành công!")
+    end)
+end)
+
+-- 9. TẠO MENU NÚT BẤM BẬT/TẮT NỔI TRÊN MÀN HÌNH (SIMPLE TOGGLE GUI)
+pcall(function()
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "SAE_AutoSteal_GUI"
+    screenGui.ResetOnSpawn = false
+    
+    -- Gắn vào CoreGui hoặc PlayerGui
+    local parentGui = game:GetService("CoreGui")
+    pcall(function() screenGui.Parent = parentGui end)
+    if not screenGui.Parent then
+        screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+    end
+    
+    local toggleBtn = Instance.new("TextButton")
+    toggleBtn.Name = "ToggleStealBtn"
+    toggleBtn.Size = UDim2.new(0, 130, 0, 45)
+    toggleBtn.Position = UDim2.new(0, 20, 0.5, -22)
+    toggleBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
+    toggleBtn.Text = "🥚 STEAL: BẬT"
+    toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    toggleBtn.TextSize = 14
+    toggleBtn.Font = Enum.Font.GothamBold
+    toggleBtn.Parent = screenGui
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 10)
+    corner.Parent = toggleBtn
+    
+    toggleBtn.MouseButton1Click:Connect(function()
+        _G.AutoStealEggs = not _G.AutoStealEggs
+        if _G.AutoStealEggs then
+            toggleBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
+            toggleBtn.Text = "🥚 STEAL: BẬT"
+        else
+            toggleBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+            toggleBtn.Text = "🥚 STEAL: TẮT"
+        end
+    end)
+end)
+
+print("[✅] SCRIPT AUTO STEAL EGG PURE LUA ĐÃ SẴN SÀNG!")

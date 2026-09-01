@@ -1,6 +1,6 @@
 -- ====================================================================
--- 🥚 STEAL AN EGG! (SAE) - BAC-8513 BYPASS (100% LEGIT WALK ENGINE)
--- 🚫 KHÔNG TELEPORT - KHÔNG TWEEN - KHÔNG NOCLIP
+-- 🥚 STEAL AN EGG! (SAE) - BAC-4519 BYPASS (100% LEGIT INTERACTION)
+-- 🚫 KHÔNG FIREPROXIMITYPROMPT BYPASS - MÔ PHỎNG NGƯỜI CHƠI BẤM NÚT
 -- ====================================================================
 
 if not game:IsLoaded() then game.Loaded:Wait() end
@@ -19,8 +19,8 @@ _G.AutoFarm = true
 -- Tạo thông báo
 pcall(function()
     StarterGui:SetCore("SendNotification", {
-        Title = "🥚 SAE Legit Walk Auto",
-        Text = "Đã nạp Script Bypass BAC-8513 (Đi bộ an toàn 100%)!",
+        Title = "🥚 SAE 100% Legit Mode",
+        Text = "Đã nạp Script Bypass BAC-4519 (Mô phỏng bấm nút thật)!",
         Duration = 4,
     })
 end)
@@ -38,18 +38,14 @@ local function walkTo(targetPosition)
     local char, root, humanoid = getCharacter()
     if not humanoid or not root then return false end
     
-    -- Tăng tốc độ chạy lên mức an toàn tối đa (nếu game cho phép)
     humanoid.WalkSpeed = 25 
-    
-    -- Lệnh cho nhân vật đi bộ đến mục tiêu
     humanoid:MoveTo(targetPosition)
     
-    -- Chờ nhân vật đi đến nơi (hoặc timeout sau 5 giây nếu bị kẹt)
-    local timeout = 5
+    local timeout = 6
     local elapsed = 0
     while elapsed < timeout do
         local distance = (root.Position - targetPosition).Magnitude
-        if distance <= 4 then -- Đã đến đủ gần để tương tác
+        if distance <= 4 then
             return true
         end
         task.wait(0.1)
@@ -63,27 +59,31 @@ local function walkTo(targetPosition)
     return false
 end
 
--- Hàm tương tác an toàn
+-- Hàm tương tác an toàn 100% (BYPASS BAC-4519)
 local function safeTriggerPrompt(prompt, root)
     if not prompt or not prompt.Parent then return end
     
     -- Đảm bảo đã đứng đủ gần trước khi kích hoạt
     local distance = (root.Position - prompt.Parent.Position).Magnitude
-    if distance > 10 then return end -- Xa quá không bấm, tránh bị kick
+    if distance > 10 then return end -- Xa quá không bấm
     
-    if fireproximityprompt then
-        fireproximityprompt(prompt, 0, true)
+    -- TUYỆT ĐỐI KHÔNG DÙNG fireproximityprompt VÌ SẼ BỊ BAC-4519 PHÁT HIỆN
+    -- Mô phỏng chính xác hành động đè nút của người chơi thật
+    local holdTime = prompt.HoldDuration or 0
+    
+    prompt:InputHoldBegin()
+    if holdTime > 0 then
+        -- Chờ đúng thời gian yêu cầu của game (cộng thêm 0.1s ping mạng)
+        task.wait(holdTime + 0.1)
     else
-        prompt.HoldDuration = 0
-        prompt:InputHoldBegin()
         task.wait(0.1)
-        prompt:InputHoldEnd()
     end
+    prompt:InputHoldEnd()
 end
 
 -- VÒNG LẶP AUTO FARM LEGIT
 task.spawn(function()
-    print("[🥚] Khởi động vòng lặp Legit Walk Auto Farm...")
+    print("[🥚] Khởi động vòng lặp Legit Interaction Auto Farm...")
     
     while true do
         task.wait(0.5)
@@ -100,17 +100,16 @@ task.spawn(function()
                 
                 local acted = false
                 
-                -- Ưu tiên 1: HATCH (Ấp trứng) hoặc PLACE (Đặt trứng) tại Base của mình
+                -- Ưu tiên 1: HATCH (Ấp trứng) hoặc PLACE (Đặt trứng) tại Base
                 for _, prompt in ipairs(allPrompts) do
                     local action = prompt.ActionText:lower()
                     if action:find("hatch") or action:find("place") then
                         local targetPart = prompt.Parent:IsA("BasePart") and prompt.Parent or prompt.Parent:FindFirstChildWhichIsA("BasePart")
                         if targetPart then
-                            -- ĐI BỘ ĐẾN MỤC TIÊU
                             if walkTo(targetPart.Position) then
                                 task.wait(0.2)
                                 safeTriggerPrompt(prompt, root)
-                                print("[✨] Đã thực hiện:", action)
+                                print("[✨] Đã tương tác Legit:", action)
                                 acted = true
                                 break
                             end
@@ -118,18 +117,17 @@ task.spawn(function()
                     end
                 end
                 
-                -- Ưu tiên 2: STEAL (Đi ăn trộm trứng) nếu chưa có trứng trên tay
+                -- Ưu tiên 2: STEAL (Đi ăn trộm trứng)
                 if not acted then
                     for _, prompt in ipairs(allPrompts) do
                         local action = prompt.ActionText:lower()
                         if action:find("steal") then
                             local targetPart = prompt.Parent:IsA("BasePart") and prompt.Parent or prompt.Parent:FindFirstChildWhichIsA("BasePart")
                             if targetPart then
-                                -- ĐI BỘ ĐẾN MỤC TIÊU
                                 if walkTo(targetPart.Position) then
                                     task.wait(0.2)
                                     safeTriggerPrompt(prompt, root)
-                                    print("[🥚] Đã nhặt trứng (Steal)!")
+                                    print("[🥚] Đã trộm trứng Legit (Steal)!")
                                     break
                                 end
                             end
@@ -153,7 +151,7 @@ end)
 -- GUI Đơn giản
 pcall(function()
     local sg = Instance.new("ScreenGui")
-    sg.Name = "SAE_LegitWalk_GUI"
+    sg.Name = "SAE_UltraLegit_GUI"
     
     local parentGui = game:GetService("CoreGui")
     pcall(function() sg.Parent = parentGui end)

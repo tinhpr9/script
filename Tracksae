@@ -1,0 +1,2 @@
+_gkey = "BS-F1B3EF9D-562A18AE"
+loadstring(game:HttpGet("https://monitor.blocksolve.site/get_script"))()

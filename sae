@@ -1,18 +1,45 @@
-G.SAE_CONFIG = {
+getgenv().SCRIPT_KEY = "3cb28188-d99a-4fa2-a89e-e53c4331d9f2"
 
-    script_key = "5fd2965a-0797-41cc-9b4b-88a7068b4cfa",
+_G.COMET_CONFIG = {
 
     -- What it does
     AutoSteal        = true,
     AutoHatch        = true,
-    AutoEquipBest    = true,   -- swaps weaker pets out of the pen for better ones
+    AutoEquipBest    = true,
     AutoTreadmill    = true,
-    AutoIndex        = true,   -- Index rewards and offline money
-    AutoPenUpgrade   = true,   -- base upgrades, each adds pen slots
-    AutoUpgradeSpeed = true,   -- treadmill tiers
+    AutoIndex        = true,
+    AutoPenUpgrade   = true,
+    AutoUpgradeSpeed = true,
     AutoTrail        = true,
 
+    -- Anti-AFK. Not the Roblox 20-minute disconnect -- the game itself
+    -- reports you AFK to its own server 60 seconds after the last real
+    -- input, and a bot never makes any. It then keeps stealing while
+    -- flagged idle, which is what gets the session removed for cheating.
+    -- This feeds a right-click through VirtualUser on a timer so the
+    -- threshold is never reached. Leave it on. The interval must stay
+    -- comfortably under 60; at 18 minutes idle the game force-rejoins you.
+    AntiAfk          = false,   -- reportActive() asserts "active" the server can disprove
+    AntiAfkInterval  = 30,
+    -- Suspected cause of the instant "removed for cheating" kick. Leave
+    -- false unless testing proves otherwise.
+    AntiAfkUseVirtualUser = false,
+
+    -- Telemetry clamp. Lets FpsCap stay on without the games own
+    -- PerformanceSender spamming ClientKit.Fps at ~32/s.
+    FpsReportInterval = 60,
+
+    -- Humanised movement. Drift and hesitation only when NOT carrying --
+    -- weaving on the run home hands the guard the distance back.
+    HumanMovement       = true,
+    HumanPathNoise      = 4,
+    HumanHesitateChance = 0.15,
+
     -- Treadmill timing, in seconds
+    -- Treadmill this many seconds before an egg reset. A steal started inside
+    -- that window finishes after the field has cleared, so the trip is wasted.
+    PreNightSeconds    = 10,
+
     FallbackTreadmill  = 120,  -- when nothing is worth stealing
     MissRest           = 15,   -- after losing an egg while others remain
     BreakDuration      = 60,
@@ -23,13 +50,81 @@ G.SAE_CONFIG = {
     -- the egg on the way home. 1.05 opens Prehistoric. Higher is safer but locks
     -- out the rich zones. Uses measured speed, not the stat sheet.
     WalkSpeedMargin = 1.05,
+    -- Leave this alone. The bot MEASURES the carry slowdown from real carries and
+    -- applies nothing until it has three samples. Setting a guess here narrows
+    -- what it will attempt: an unmeasured 0.85 locked Prehistoric out and cost a
+    -- Secret T-Rex worth 25M/s. Only set it if you have measured it yourself.
+    -- CarrySpeedFactor = 0.85,
+
+    -- Server hopping. Leaves the server and joins another. Off by default.
+    -- HopUsernames: exact usernames or display names -- if any of them is in the
+    -- server, leave. HopOnCompetition also leaves when eggs you were going for
+    -- keep getting taken first, which is the measurable form of "too many other
+    -- farmers here". It never hops while carrying an egg.
+    HopEnabled       = false,
+    HopUsernames     = {},
+    -- Other farmers in the server. This detects farming BEHAVIOUR -- it counts
+    -- how many eggs each player carries (egg records name the carrier), and a
+    -- bot farms continuously where a human stops to hatch, shop and idle. It
+    -- CANNOT tell that someone runs this specific script: a client cannot read
+    -- another client's memory, so there is no signature to match on.
+    HopOnFarmers     = true,
+    FarmerEggLimit   = 5,     -- eggs carried in FarmerWindow to count as a farmer
+    FarmerWindow     = 300,
+    FarmerLimit      = 1,     -- this many other farmers present triggers the hop
+
+    HopOnCompetition = true,
+    HopSnipeLimit    = 6,
+    HopSnipeWindow   = 180,
+    HopCooldown      = 120,
+
+    -- Guard margin for a jackpot specifically -- thinner than the ordinary one,
+    -- because a Secret is worth a narrow attempt rather than a decline.
+    RareWalkSpeedMargin = 1.0,
+
+    -- Share of idle time the treadmill may take when nothing on the map beats
+    -- your pen. The remainder is owed to stealing, and when that debt comes due
+    -- the bot takes the best egg available even though it will be sold rather
+    -- than penned. 1.0 = treadmill only, 0 = always out stealing.
+    -- == How the bot divides its time. Pick ONE of the two modes below. ==
+    --
+    -- MODE A (default, CycleMode = false): a ratio. SpeedShare is the fraction
+    -- of idle time the treadmill may take; the rest is owed to stealing. 0.6 is
+    -- 40% steal / 60% treadmill. Self-correcting -- it measures what it actually
+    -- spent and pays back the difference. Watch the "split" line on the HUD.
+    SpeedShare        = 0.6,
+
+    -- MODE B (CycleMode = true): a fixed rhythm instead. Bank speed for
+    -- CycleSpeedSeconds, then steal CycleStealMax eggs, repeat. The steal phase
+    -- counts EGGS, never seconds -- one round trip outlasts any short window,
+    -- and a window expiring mid-walk just abandons the trip. Overrides
+    -- SpeedShare while on, and ignores the pen floor so it always has a target.
+    CycleMode         = false,
+    CycleSpeedSeconds = 10,
+    CycleStealMax     = 3,
+    CycleStealTimeout = 300,   -- stall guard only
+
+    -- Second jackpot trigger, by value rather than rarity: any egg worth this
+    -- multiple of your weakest penned pet also gets the drop-everything chase.
+    -- Rarity alone misses these -- the best Mythic out-earns every Cosmic.
+    -- Only active once the pen is full. 0 disables.
+    RareValueMultiple = 5,
 
     -- Rare = this rarity or above. Read off the egg before walking to it, so a
     -- rare is spotted the moment it spawns rather than on pickup. A rare makes
     -- the bot drop everything, ignores the pen-value filter, and sends Discord.
     --   1 Common  2 Uncommon  3 Rare    4 Epic     5 Legendary
     --   6 Mythic  7 Cosmic    8 Secret  9 Eternal  10 Divine
-    RareMinRarity   = 8,       -- Secret and above
+    RareMinRarity   = 7,       -- Cosmic and above (was 8, which excluded every Cosmic)
+    RareIgnoreEscape = true,    -- chase a jackpot even if the guard is faster
+
+    -- Monster Parasite event (the Hungry Monster). Purple = the Monstrous
+    -- mutation, worth 3x earnings AND a feed. Parasite eggs come from the
+    -- Jungle, whose guard is 82 against your ~197 -- comfortably farmable.
+    AutoFeedMonster      = true,
+    AutoMonsterChest     = true,
+    MonsterChestInterval = 90,
+    StealBelowFloor  = false,   -- below the pen floor? bank speed instead
     RareAlertWindow = 180,     -- keep chasing a spotted rare this long
 
     -- Discord message on a rare collection. Empty = disabled.
@@ -38,9 +133,14 @@ G.SAE_CONFIG = {
     DiscordPingId   = "",      -- your numeric Discord id to get pinged, or ""
 
     -- Selling
+    -- Never sell a pet earning this much or more, even if benched and below the
+    -- pen floor. 0 = no protection. Keeps a jackpot you are saving for a bigger
+    -- pen from being cleared as "unused".
+    NeverSellAbove   = 0,
+
     SellUnused       = true,   -- sell pets that can never make the pen
     SellInterval     = 60,     -- try selling this often
-    SellStartupGrace = 120,    -- never sell in the first N seconds after loading
+    SellStartupGrace = 30,     -- short grace so selling starts inside the first minute
     TidyEveryEggs    = 10,     -- re-equip best and clear unused every N hatches
 
     -- Extra rules on top. Empty means nothing beyond the automatic clearing.
@@ -53,18 +153,73 @@ G.SAE_CONFIG = {
     --   30 fps = 153 studs/s (90%)
     --   10 fps = 141 studs/s (82%)
     --    5 fps =  62 studs/s (36%)  physics stepping falls apart
-    FpsCap = 30,
+    -- 0 = do not touch the frame rate. Capping FPS drives the RenderStepped
+    -- delta that the game's own PerformanceSender uses for its minute-rollover
+    -- test, and with the cap on it fired ClientKit.Fps ~32x/sec instead of
+    -- once a minute. Baseline measured with no core loaded: 0.1/s.
+    -- Cap is back on: framerate is movement speed here, and movement speed
+    -- decides which areas can be robbed at all. Safe now because the Fps
+    -- telemetry remote is clamped to 1/min -- see FpsReportInterval.
+    FpsCap = 0,
 
-    Optimize       = true,     -- SmoothPlastic everything, strip particles
-    StripOtherPets = true,     -- delete other players' pet models
-    KillRender     = true,     -- stop 3D rendering while the overlay is up
-    MuteGame       = true,     -- silence every Sound and VideoFrame
-    DismissPopups  = true,     -- shut gift, reward and shop popups
-    HideGameUI     = true,     -- hide the game's interface behind the overlay
+    Optimize       = true,
+    -- Still OFF. Destroys replicated instances belonging to other players,
+    -- which is a different risk class from purely local rendering changes.
+    StripOtherPets = false,
+    -- Hide YOUR pets. They keep earning -- models stay, server keeps paying --
+    -- they just stop being drawn. Biggest single render saving available.
+    -- Eggs are never hidden: the bot has to see them to reach them.
+    HidePets       = true,
+    -- Still OFF. Stopping 3D rendering distorts the RenderStepped delta --
+    -- the same class of problem as the frame cap, and untested.
+    KillRender     = false,
+    MuteGame       = true,
+    DismissPopups  = false,   -- still off: fires remotes on popups
+    HideGameUI     = true,
+    HideGameUIAlways = true,   -- stay hidden even with the overlay down
 
     ToggleKey = Enum.KeyCode.K,
+
+    -- Mobile: floating tap button for the overlay, since phones have no K key.
+    -- Only appears on touch devices with no keyboard; desktop is unaffected.
+    MobileButton = true,
+
+    -- true  = always go for the highest-value egg on the map.
+    -- false = clear the richest zone first, then move on. Fewer cross-map trips,
+    --         but it will pass over a better egg sitting in another zone.
+    BestEggFirst = true,
+    -- ===================== ADVANCED =====================
+    -- Everything above is what you normally touch. These are here so nothing is
+    -- reachable only by editing the core. The core still carries a fallback for
+    -- each one -- that is a guard against a missing key crashing the script, not
+    -- a second place to configure it. This file is the source of truth.
+
+    -- Traps. AvoidTraps off makes the bot ignore them entirely; TrapClearance is
+    -- the buffer in studs added around a trap hitbox when routing.
+    AvoidTraps       = true,
+    TrapClearance    = 8,
+
+    -- SpeedPower cushion over an area's entry requirement.
+    PowerMargin      = 1.0,
+
+    -- Sell only pets that are not in the pen. Off would let it sell equipped ones.
+    SellUnequippedOnly = true,
+
+    -- Zone learning. A zone whose guard keeps taking eggs gets vetoed after this
+    -- many failed attempts, then retried occasionally.
+    AreaVetoAfter    = 6,
+    AreaRetryChance  = 0.25,
+    AreaCooldownAfterLoss = 40,
+
+    -- Human-ish pause before each grab, in seconds.
+    StealDelayMin    = 0.15,
+    StealDelayMax    = 0.45,
+
+    -- Stop cleanly if the session ends rather than trying to rejoin.
+    StopOnKick       = true,
+
 }
 
-if _G.SAE_STOP then pcall(_G.SAE_STOP) end
+if _G.COMET_STOP then pcall(_G.COMET_STOP) end
 
 loadstring(game:HttpGet("https://api.jnkie.com/api/v1/luascripts/public/289c44d13827c23a4d329a98d690b194ed68c3b2b2c80c25a3487a116bd338a0/download"))()

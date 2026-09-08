@@ -1,4 +1,4 @@
-getgenv().SCRIPT_KEY = "f2a8ae7a-e21e-4491-8175-10e1fa0ecc95"
+getgenv().SCRIPT_KEY = "ccf52e15-82db-4e52-ad19-3948648083dc"
 
 _G.COMET_CONFIG = {
 

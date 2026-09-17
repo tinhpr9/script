@@ -107,4 +107,4 @@ _G.COMET_CONFIG = {
 
 if _G.COMET_STOP then pcall(_G.COMET_STOP) end
 
-loadstring(game:HttpGet("https://api.jnkie.com/api/v1/luascripts/public/289c44d13827c23a4d329a98d690b194ed68c3b2b2c80c25a3487a116bd338a0/download"))()
+loadstring(game:HttpGet("https://api.jnkie.com/api/v1/luascripts/public/77bbe1e3da567d99883d657e7bd85f72591f13e00262b3f382e8079f80368fdf/download"))()
